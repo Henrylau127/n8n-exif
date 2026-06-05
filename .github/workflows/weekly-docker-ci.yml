@@ -6,6 +6,8 @@
 # Manual run: Actions tab -> Weekly Docker CI -> Run workflow.
 #
 # Required repo secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (Docker Hub access token).
+# Publishes a public GHCR image (no login required to pull). New packages default to
+# private; the workflow sets visibility to public after each push.
 
 name: Weekly Docker CI
 
@@ -27,6 +29,13 @@ jobs:
   build-and-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      LOCAL_IMAGE: n8n-exif:verify
+      GHCR_IMAGE: ghcr.io/${{ github.repository }}
 
     steps:
       - name: Checkout
@@ -56,8 +65,61 @@ jobs:
         if: steps.version-check.outputs.build_needed == 'true'
         env:
           BUILD_ARG_FILE: ${{ steps.version-check.outputs.build_arg_file }}
+          IMAGE: ${{ env.LOCAL_IMAGE }}
           PLATFORM: linux/amd64
         run: bash ./scripts/verify.sh
+
+      - name: Log in to GHCR
+        if: steps.version-check.outputs.build_needed == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to GHCR
+        if: steps.version-check.outputs.build_needed == 'true'
+        run: |
+          IMAGE_ID="$(echo "${GHCR_IMAGE}" | tr '[:upper:]' '[:lower:]')"
+          VERSION="${{ steps.version-check.outputs.n8n_version }}"
+
+          docker tag "${LOCAL_IMAGE}" "${IMAGE_ID}:latest"
+          docker tag "${LOCAL_IMAGE}" "${IMAGE_ID}:${VERSION}"
+
+          docker push "${IMAGE_ID}:latest"
+          docker push "${IMAGE_ID}:${VERSION}"
+
+          echo "ghcr_image=${IMAGE_ID}" >> "${GITHUB_OUTPUT}"
+          echo "ghcr_tags=latest,${VERSION}" >> "${GITHUB_OUTPUT}"
+        id: publish
+
+      - name: Make GHCR package public
+        if: steps.version-check.outputs.build_needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE_NAME: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          OWNER="${{ github.repository_owner }}"
+
+          current="$(gh api "users/${OWNER}/packages/container/${PACKAGE_NAME}" --jq .visibility 2>/dev/null || true)"
+          if [ "${current}" = "public" ]; then
+            echo "GHCR package already public"
+            exit 0
+          fi
+
+          if gh api --method PATCH "user/packages/container/${PACKAGE_NAME}" -f visibility=public; then
+            echo "GHCR package visibility set to public"
+            exit 0
+          fi
+
+          if gh api --method PATCH "orgs/${OWNER}/packages/container/${PACKAGE_NAME}" -f visibility=public; then
+            echo "GHCR org package visibility set to public"
+            exit 0
+          fi
+
+          echo "::warning::Could not set GHCR visibility via API. Open Packages -> ${PACKAGE_NAME} -> Package settings -> Change visibility -> Public."
+          exit 0
 
       - name: Record last built version
         if: steps.version-check.outputs.build_needed == 'true'
@@ -88,7 +150,13 @@ jobs:
             echo "- **Resolved n8n:** ${{ steps.version-check.outputs.n8n_registry_image }}:${{ steps.version-check.outputs.n8n_version }}"
             echo "- **Last built n8n:** ${{ steps.version-check.outputs.last_n8n_version || 'none' }}"
             if [ "${{ steps.version-check.outputs.build_needed }}" = "true" ]; then
-              echo "- **Result:** built and verified (${{ steps.version-check.outputs.skip_reason }})"
+              echo "- **Result:** built, verified, and published (${{ steps.version-check.outputs.skip_reason }})"
+              echo "- **Pull (no login):** \`${{ steps.publish.outputs.ghcr_image }}:latest\`"
+              echo "- **Rollback tag:** \`${{ steps.publish.outputs.ghcr_image }}:${{ steps.version-check.outputs.n8n_version }}\`"
+              echo ""
+              echo '```yaml'
+              echo "image: ${{ steps.publish.outputs.ghcr_image }}:latest"
+              echo '```'
             else
               echo "- **Result:** skipped (${{ steps.version-check.outputs.skip_reason }})"
             fi
