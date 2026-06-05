@@ -1,0 +1,40 @@
+# Weekly CI: rebuild n8n-exif against the current official n8n:latest image.
+# Align the cron below with your NAS auto-update schedule so failures are caught
+# before (or when) the NAS pulls a fresh base image.
+#
+# Schedule: Saturday 06:00 GMT+8 (Friday 22:00 UTC).
+# Manual run: Actions tab -> Weekly Docker CI -> Run workflow.
+
+name: Weekly Docker CI
+
+on:
+  schedule:
+    - cron: "0 22 * * 5"
+  workflow_dispatch:
+
+concurrency:
+  group: weekly-docker-ci
+  cancel-in-progress: true
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and verify (linux/amd64)
+        run: bash ./scripts/verify.sh
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "### Weekly Docker CI"
+            echo ""
+            echo "- **Trigger:** ${{ github.event_name }}"
+            echo "- **Platform:** linux/amd64 (NAS / x86-64)"
+            echo "- **Base image:** official n8n:latest (registry + version resolved at build time)"
+          } >> "${GITHUB_STEP_SUMMARY}"
