@@ -13,7 +13,7 @@
 #
 # Linter-only defaults below; the script always overrides them via --build-arg-file.
 ARG RESOLVED_BY_SCRIPT=false
-ARG N8N_REGISTRY_IMAGE=docker.n8n.io/n8nio/n8n
+ARG N8N_REGISTRY_IMAGE=n8nio/n8n
 ARG N8N_VERSION=latest
 ARG ALPINE_VERSION=3.22
 

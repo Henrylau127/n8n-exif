@@ -8,9 +8,13 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 IMAGE="${IMAGE:-n8n-exif:verify}"
 PLATFORM="${PLATFORM:-linux/amd64}"
 
-BUILD_ARG_FILE="$(mktemp)"
-trap 'rm -f "${BUILD_ARG_FILE}"' EXIT
-RESOLVE_PLATFORM="${PLATFORM}" bash "${SCRIPT_DIR}/resolve-build-versions.sh" --build-arg-file >"${BUILD_ARG_FILE}"
+if [ -n "${BUILD_ARG_FILE:-}" ] && [ -f "${BUILD_ARG_FILE}" ]; then
+  echo "==> Using pre-resolved build args from ${BUILD_ARG_FILE}"
+else
+  BUILD_ARG_FILE="$(mktemp)"
+  trap 'rm -f "${BUILD_ARG_FILE}"' EXIT
+  RESOLVE_PLATFORM="${PLATFORM}" bash "${SCRIPT_DIR}/resolve-build-versions.sh" --build-arg-file >"${BUILD_ARG_FILE}"
+fi
 
 N8N_REGISTRY_IMAGE=""
 N8N_VERSION=""

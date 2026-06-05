@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 # Resolve N8N_VERSION and ALPINE_VERSION from the published n8n image manifest
 # (no layer download). docker build pulls images once during the build stage.
-# Defaults to docker.n8n.io/n8nio/n8n:latest (official stable), with Docker Hub fallback.
+# Defaults to n8nio/n8n:latest on Docker Hub.
 #
 # Usage:
 #   eval "$(bash ./scripts/resolve-build-versions.sh --export)"
 #   ./scripts/verify-local.sh
 set -euo pipefail
 
-N8N_REGISTRY_IMAGE="${N8N_REGISTRY_IMAGE:-docker.n8n.io/n8nio/n8n}"
-N8N_REGISTRY_FALLBACK="${N8N_REGISTRY_FALLBACK:-n8nio/n8n}"
+N8N_REGISTRY_IMAGE="${N8N_REGISTRY_IMAGE:-n8nio/n8n}"
 RESOLVE_PLATFORM="${RESOLVE_PLATFORM:-linux/amd64}"
 RESOLVED_REGISTRY_IMAGE=""
 
@@ -102,11 +101,8 @@ resolve_from_manifest() {
 
 IMAGE_REF="$(resolve_image_ref "${N8N_REGISTRY_IMAGE}")"
 if ! resolve_from_manifest "${IMAGE_REF}" "${N8N_REGISTRY_IMAGE}"; then
-  IMAGE_REF="$(resolve_image_ref "${N8N_REGISTRY_FALLBACK}")"
-  if ! resolve_from_manifest "${IMAGE_REF}" "${N8N_REGISTRY_FALLBACK}"; then
-    echo "Could not resolve n8n/Alpine versions from ${N8N_REGISTRY_IMAGE} or ${N8N_REGISTRY_FALLBACK}" >&2
-    exit 1
-  fi
+  echo "Could not resolve n8n/Alpine versions from ${N8N_REGISTRY_IMAGE}" >&2
+  exit 1
 fi
 
 echo "Resolved from ${IMAGE_REF}: n8n ${N8N_VERSION}, Alpine ${ALPINE_VERSION}" >&2

@@ -4,6 +4,8 @@
 #
 # Schedule: Saturday 06:00 GMT+8 (Friday 22:00 UTC).
 # Manual run: Actions tab -> Weekly Docker CI -> Run workflow.
+#
+# Required repo secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (Docker Hub access token).
 
 name: Weekly Docker CI
 
@@ -11,6 +13,11 @@ on:
   schedule:
     - cron: "0 22 * * 5"
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: Build even if the resolved n8n version is unchanged
+        type: boolean
+        default: false
 
 concurrency:
   group: weekly-docker-ci
@@ -25,8 +32,50 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Restore last built version
+        uses: actions/cache/restore@v4
+        with:
+          path: .ci
+          key: n8n-exif-last-built
+
+      - name: Check n8n version
+        id: version-check
+        env:
+          FORCE_BUILD: ${{ inputs.force_build == true && 'true' || 'false' }}
+          BUILD_ARG_FILE: ${{ runner.temp }}/build-args
+          RESOLVE_PLATFORM: linux/amd64
+        run: bash ./scripts/check-build-version.sh
+
       - name: Build and verify (linux/amd64)
+        if: steps.version-check.outputs.build_needed == 'true'
+        env:
+          BUILD_ARG_FILE: ${{ steps.version-check.outputs.build_arg_file }}
+          PLATFORM: linux/amd64
         run: bash ./scripts/verify.sh
+
+      - name: Record last built version
+        if: steps.version-check.outputs.build_needed == 'true'
+        run: |
+          mkdir -p .ci
+          {
+            printf 'N8N_VERSION=%s\n' "${{ steps.version-check.outputs.n8n_version }}"
+            printf 'N8N_REGISTRY_IMAGE=%s\n' "${{ steps.version-check.outputs.n8n_registry_image }}"
+            printf 'ALPINE_VERSION=%s\n' "${{ steps.version-check.outputs.alpine_version }}"
+            printf 'BUILT_AT=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > .ci/last-built-version
+
+      - name: Save last built version
+        if: steps.version-check.outputs.build_needed == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .ci
+          key: n8n-exif-last-built
 
       - name: Job summary
         if: always()
@@ -36,5 +85,11 @@ jobs:
             echo ""
             echo "- **Trigger:** ${{ github.event_name }}"
             echo "- **Platform:** linux/amd64 (NAS / x86-64)"
-            echo "- **Base image:** official n8n:latest (registry + version resolved at build time)"
+            echo "- **Resolved n8n:** ${{ steps.version-check.outputs.n8n_registry_image }}:${{ steps.version-check.outputs.n8n_version }}"
+            echo "- **Last built n8n:** ${{ steps.version-check.outputs.last_n8n_version || 'none' }}"
+            if [ "${{ steps.version-check.outputs.build_needed }}" = "true" ]; then
+              echo "- **Result:** built and verified (${{ steps.version-check.outputs.skip_reason }})"
+            else
+              echo "- **Result:** skipped (${{ steps.version-check.outputs.skip_reason }})"
+            fi
           } >> "${GITHUB_STEP_SUMMARY}"
