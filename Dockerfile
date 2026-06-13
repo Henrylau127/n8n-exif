@@ -34,9 +34,13 @@ COPY --from=apk-donor /sbin/apk /sbin/apk
 COPY --from=apk-donor /usr/lib/libapk.so* /usr/lib/
 
 USER root
-RUN apk add --no-cache exiftool \
+RUN apk add --no-cache \
+    exiftool \
+    chromium \
   && npm install -g --omit=dev --no-audit --no-fund city-timezones tz-lookup
 
 ENV NODE_FUNCTION_ALLOW_EXTERNAL=city-timezones,tz-lookup
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 USER node

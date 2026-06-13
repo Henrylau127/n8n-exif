@@ -81,7 +81,7 @@ resolve_from_manifest() {
     ALPINE_VERSION="${alpine_distro#alpine-}"
   elif [ -n "${N8N_VERSION}" ] && [ "${N8N_VERSION}" != "<no value>" ]; then
     echo "Alpine label missing on ${platform_ref}; pulling image to read /etc/alpine-release..." >&2
-    docker pull --platform "${RESOLVE_PLATFORM}" "${image_ref}"
+    docker pull --platform "${RESOLVE_PLATFORM}" "${image_ref}" >&2
     local alpine_release
     alpine_release="$(docker run --rm --platform "${RESOLVE_PLATFORM}" --entrypoint cat "${image_ref}" /etc/alpine-release)"
     ALPINE_VERSION="$(python3 -c "print('.'.join('${alpine_release}'.strip().split('.')[:2]))")"
