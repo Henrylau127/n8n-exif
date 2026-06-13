@@ -47,6 +47,6 @@ docker build \
 
 echo "==> Verify exiftool, chromium, and npm packages"
 docker run --rm --platform "${PLATFORM}" --entrypoint sh "${IMAGE}" -c \
-  'exiftool -ver && test -x "${PUPPETEER_EXECUTABLE_PATH}" && "${PUPPETEER_EXECUTABLE_PATH}" --version && node -e "require(\"city-timezones\"); require(\"tz-lookup\")"'
+  'exiftool -ver && test -x "${PUPPETEER_EXECUTABLE_PATH}" && "${PUPPETEER_EXECUTABLE_PATH}" --version && test -d "$(npm root -g)/city-timezones" && test -d "$(npm root -g)/tz-lookup" && node -e "const {createRequire}=require(\"module\"); const r=createRequire(\"/usr/local/lib/node_modules/n8n/package.json\"); r(\"city-timezones\"); r(\"tz-lookup\")"'
 
 echo "Checks passed (${N8N_REGISTRY_IMAGE}:${N8N_VERSION}, Alpine ${ALPINE_VERSION})."

@@ -26,21 +26,21 @@ FROM ${N8N_REGISTRY_IMAGE}:${N8N_VERSION}
 
 ARG RESOLVED_BY_SCRIPT
 RUN if [ "${RESOLVED_BY_SCRIPT}" != "true" ]; then \
-      echo "Build via scripts/resolve-build-versions.sh (see Dockerfile header)." >&2; \
-      exit 1; \
-    fi
+  echo "Build via scripts/resolve-build-versions.sh (see Dockerfile header)." >&2; \
+  exit 1; \
+  fi
 
 COPY --from=apk-donor /sbin/apk /sbin/apk
 COPY --from=apk-donor /usr/lib/libapk.so* /usr/lib/
 
 USER root
 RUN apk add --no-cache \
-    exiftool \
-    chromium \
+  exiftool \
+  chromium \
   && npm install -g --omit=dev --no-audit --no-fund city-timezones tz-lookup
 
 ENV NODE_FUNCTION_ALLOW_EXTERNAL=city-timezones,tz-lookup
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+  PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 USER node
