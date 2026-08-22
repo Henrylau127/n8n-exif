@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -151,8 +151,8 @@ jobs:
             echo "- **Last built n8n:** ${{ steps.version-check.outputs.last_n8n_version || 'none' }}"
             if [ "${{ steps.version-check.outputs.build_needed }}" = "true" ]; then
               echo "- **Result:** built, verified, and published (${{ steps.version-check.outputs.skip_reason }})"
-              echo "- **Pull (no login):** \`${{ steps.publish.outputs.ghcr_image }}:latest\`"
-              echo "- **Rollback tag:** \`${{ steps.publish.outputs.ghcr_image }}:${{ steps.version-check.outputs.n8n_version }}\`"
+              echo "- **Pull (no login):** `${{ steps.publish.outputs.ghcr_image }}:latest`"
+              echo "- **Rollback tag:** `${{ steps.publish.outputs.ghcr_image }}:${{ steps.version-check.outputs.n8n_version }}`"
               echo ""
               echo '```yaml'
               echo "image: ${{ steps.publish.outputs.ghcr_image }}:latest"
