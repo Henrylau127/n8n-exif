@@ -3,7 +3,7 @@ name: Weekly Heartbeat
 on:
   schedule:
     - cron: "30 22 * * 5"
-  workflow_dispatch
+  workflow_dispatch:
 
 concurrency:
   group: weekly-heartbeat
