@@ -151,7 +151,10 @@ jobs:
             echo "- **Last built n8n:** ${{ steps.version-check.outputs.last_n8n_version || 'none' }}"
             if [ "${{ steps.version-check.outputs.build_needed }}" = "true" ]; then
               echo "- **Result:** built, verified, and published (${{ steps.version-check.outputs.skip_reason }})"
+              # Markdown code spans. These backticks are not command substitutions.
+              # shellcheck disable=SC2006
               echo "- **Pull (no login):** `${{ steps.publish.outputs.ghcr_image }}:latest`"
+              # shellcheck disable=SC2006
               echo "- **Rollback tag:** `${{ steps.publish.outputs.ghcr_image }}:${{ steps.version-check.outputs.n8n_version }}`"
               echo ""
               echo '```yaml'

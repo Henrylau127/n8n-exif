@@ -33,7 +33,11 @@ RUN if [ "${RESOLVED_BY_SCRIPT}" != "true" ]; then \
 COPY --from=apk-donor /sbin/apk /sbin/apk
 COPY --from=apk-donor /usr/lib/libapk.so* /usr/lib/
 
+# Match the base image user names. Numeric ids would drift from n8n.
+# hadolint ignore=DL3066
 USER root
+# Packages follow the Alpine release resolved with each n8n rebuild.
+# hadolint ignore=DL3018,DL3016
 RUN apk add --no-cache \
   exiftool \
   chromium \
@@ -43,4 +47,5 @@ ENV NODE_FUNCTION_ALLOW_EXTERNAL=city-timezones,tz-lookup
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
   PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
+# hadolint ignore=DL3066
 USER node
